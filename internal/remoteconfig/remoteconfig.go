@@ -211,7 +211,10 @@ func (c *Client) updateState() {
 	if err != nil {
 		log.Debug("remoteconfig: http request error: %v", err)
 		return
+	} else {
+		log.Info("remoteconfig request successful!")
 	}
+
 	// Flush and close the response body when returning (cf. https://pkg.go.dev/net/http#Client.Do)
 	defer func() {
 		io.ReadAll(resp.Body)
@@ -219,7 +222,7 @@ func (c *Client) updateState() {
 	}()
 
 	if sc := resp.StatusCode; sc != http.StatusOK {
-		log.Debug("remoteconfig: http request error: response status code is not 200 (OK) but %s", http.StatusText(sc))
+		log.Info("remoteconfig: http request error: response status code is not 200 (OK) but %s", http.StatusText(sc))
 		return
 	}
 
@@ -230,6 +233,7 @@ func (c *Client) updateState() {
 	}
 
 	if body := string(respBody); body == `{}` || body == `null` {
+		log.Error("remoteconfig: empty body %s\n", body)
 		return
 	}
 
@@ -239,6 +243,9 @@ func (c *Client) updateState() {
 		return
 	}
 
+	for i := range update.Roots {
+		log.Info("Root config: %s", string(update.Roots[i]))
+	}
 	c.lastError = c.applyUpdate(&update)
 }
 
@@ -414,6 +421,7 @@ func (c *Client) applyUpdate(pbUpdate *clientGetConfigsResponse) error {
 		productUpdates[p] = make(ProductUpdate)
 	}
 	for _, f := range pbUpdate.TargetFiles {
+		log.Info("Got RC update: %s %s", f.Path, f.Raw)
 		fileMap[f.Path] = f.Raw
 		for _, p := range allProducts {
 			// Check the config file path to make sure it belongs to the right product
